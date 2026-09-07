@@ -11,7 +11,7 @@
     // Если вкладка должна быть пустой, оставьте поле пустым: ""
     // ==========================================
     const tabLinks = {
-        1: "https://raw.githubusercontent.com/ВАШ_АККАУНТ/ВАШ_РЕПО/main/script1.js",
+        1: "https://raw.githubusercontent.com/jura75/project-s-files-pak/refs/heads/main/table%20units.js",
         2: "",
         3: "",
         4: "",
