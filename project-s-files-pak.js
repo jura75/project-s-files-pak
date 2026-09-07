@@ -5,6 +5,23 @@
         return;
     }
 
+    // ==========================================
+    // НАСТРОЙКА ССЫЛОК НА СКРИПТЫ ДЛЯ КАЖДОЙ ВКЛАДКИ
+    // Укажите прямые ссылки (Raw) на файлы из вашего репозитория.
+    // Если вкладка должна быть пустой, оставьте поле пустым: ""
+    // ==========================================
+    const tabLinks = {
+        1: "https://raw.githubusercontent.com/ВАШ_АККАУНТ/ВАШ_РЕПО/main/script1.js",
+        2: "",
+        3: "",
+        4: "",
+        5: "",
+        6: "",
+        7: "",
+        8: "",
+        9: ""
+    };
+
     let panel = document.createElement('div');
     panel.id = 'tw-custom-hub-panel';
     panel.style.cssText = `
@@ -47,9 +64,9 @@
             <button class="tw-hub-tab-btn" data-tab="9" style="background: #3b2812; border: 1px solid #7d510f; color: #f4e4bc; padding: 6px 12px; font-size: 11px; font-weight: bold; cursor: pointer; border-radius: 3px; white-space: nowrap;">Вкладка 9</button>
         </div>
 
-        <!-- Контейнер для содержимого -->
-        <div id="tw-hub-content-container" style="flex: 1; background: #fff8eb; color: #5b3511; padding: 15px; overflow: auto; box-sizing: border-box;">
-            <div style="font-size: 12px; font-style: italic; color: #7d510f;">Здесь пока ничего нет. Вкладка 1 пуста.</div>
+        <!-- Контейнер для содержимого (куда будут встраиваться скрипты вкладки) -->
+        <div id="tw-hub-content-container" style="flex: 1; background: #fff8eb; color: #5b3511; overflow: auto; position: relative; display: flex; flex-direction: column;">
+            <div style="padding: 15px; font-size: 12px; font-style: italic; color: #7d510f;">Загрузка...</div>
         </div>
 
         <!-- Нижняя строка состояния -->
@@ -62,7 +79,7 @@
     document.body.appendChild(panel);
     document.getElementById('tw-hub-close').onclick = () => panel.remove();
 
-    // Логика перетаскивания панели мышкой за шапку
+    // Перетаскивание панели мышкой за шапку
     let header = document.getElementById('tw-hub-header');
     let isDragging = false;
     let startX = 0, startY = 0;
@@ -101,7 +118,65 @@
         document.removeEventListener('mouseup', onMouseUp);
     }
 
-    // Переключение вкладок (пока просто меняет текст-заглушку)
+    // Функция загрузки и отрисовки содержимого вкладки внутри панели
+    function loadTab(tabNum) {
+        let container = document.getElementById('tw-hub-content-container');
+        container.innerHTML = '';
+
+        let scriptUrl = tabLinks[tabNum];
+
+        // Если ссылка для вкладки не заполнена
+        if (!scriptUrl || scriptUrl.trim() === "") {
+            container.innerHTML = `<div style="padding: 15px; font-size: 12px; font-style: italic; color: #7d510f;">Вкладка ${tabNum} пуста. Добавьте ссылку на скрипт в массив ` + "`tabLinks`" + ` в коде панели.</div>`;
+            return;
+        }
+
+        container.innerHTML = `<div style="padding: 15px; font-size: 12px; color: #7d510f;">Загрузка скрипта для вкладки ${tabNum}...</div>`;
+
+        // Загружаем файл скрипта из вашего репозитория
+        fetch(scriptUrl + '?_=' + Date.now())
+            .then(response => {
+                if (!response.ok) throw new Error('Ошибка загрузки файла');
+                return response.text();
+            })
+            .then(scriptCode => {
+                container.innerHTML = '';
+                
+                // Создаем внутренний оберточный контейнер для интерфейса скрипта
+                let tabInnerWrapper = document.createElement('div');
+                tabInnerWrapper.style.cssText = 'width: 100%; height: 100%; overflow: auto; box-sizing: border-box; position: relative;';
+                container.appendChild(tabInnerWrapper);
+
+                // Перехватываем добавление элементов в DOM, чтобы интерфейсы ваших скриптов 
+                // рендерились строго ВНУТРИ этой вкладки, а не поверх всей игры
+                let originalAppendChild = document.body.appendChild;
+                document.body.appendChild = function(node) {
+                    if (node && node.nodeType === 1 && node.id !== 'tw-custom-hub-panel') {
+                        tabInnerWrapper.appendChild(node);
+                        // Сбрасываем абсолютное позиционирование интерфейса скрипта под размеры вкладки
+                        node.style.cssText += '; position: relative !important; top: auto !important; left: auto !important; transform: none !important; margin: 0 auto !important; max-width: 100% !important; box-sizing: border-box !important;';
+                        document.body.appendChild = originalAppendChild;
+                        return node;
+                    }
+                    return originalAppendChild.call(document.body, node);
+                };
+
+                try {
+                    // Исполняем код скрипта вкладки
+                    let s = document.createElement('script');
+                    s.textContent = scriptCode;
+                    document.body.appendChild(s);
+                    s.remove();
+                } finally {
+                    document.body.appendChild = originalAppendChild;
+                }
+            })
+            .catch(err => {
+                container.innerHTML = `<div style="padding: 15px; font-size: 12px; color: #b22222;">Не удалось загрузить скрипт для вкладки ${tabNum}. Проверьте правильность ссылки.</div>`;
+            });
+    }
+
+    // Обработка переключения вкладок
     panel.querySelectorAll('.tw-hub-tab-btn').forEach(btn => {
         btn.onclick = function() {
             panel.querySelectorAll('.tw-hub-tab-btn').forEach(b => {
@@ -114,9 +189,11 @@
             this.classList.add('active');
 
             let tabNum = this.getAttribute('data-tab');
-            let container = document.getElementById('tw-hub-content-container');
-            container.innerHTML = `<div style="font-size: 12px; font-style: italic; color: #7d510f;">Здесь пока ничего нет. Вкладка ${tabNum} пуста.</div>`;
+            loadTab(tabNum);
         };
     });
+
+    // Автоматически загружаем первую вкладку при открытии панели
+    loadTab('1');
 })();
 void(0);
