@@ -1,5 +1,5 @@
 (function() {
-    let existing = document.getElementById('tw-custom-hub-panel');
+    let existing = document.getElementById('tw-custom-hub-panel'); 
     if (existing) {
         existing.remove();
         return;
